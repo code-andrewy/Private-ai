@@ -1,19 +1,15 @@
-/* Andrew's Portal Style - AI Edition */
 :root {
   --accent-blue: #00d2ff;
-  --accent-yellow: #ffd700;
   --glass: rgba(15, 20, 35, 0.72);
-  --glass-light: rgba(255, 255, 255, 0.9); /* Light glass for black text */
+  --glass-light: rgba(255, 255, 255, 0.9);
   --border: rgba(255, 255, 255, 0.12);
+  --text: #ffffff;
   --text-dark: #000000;
-  --muted: #cbd5e1;
   --bg-fallback: url('https://raw.githubusercontent.com/code-andrewy/jumpman64beta/refs/heads/main/charlie-brown-snoopy-stargazing-desktop-wallpaper-preview.jpg');
-  --ease-smooth: cubic-bezier(0.23, 1, 0.32, 1);
   --card-radius: 40px;
   --glass-blur: 35px;
 }
 
-/* Full Centering Fix */
 body {
   min-height: 100vh;
   margin: 0;
@@ -25,25 +21,104 @@ body {
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-  overflow: hidden;
+  color: var(--text);
 }
 
+.container { width: 95vw; max-width: 1200px; }
+
 .card {
-  width: 90vw;
-  max-width: 1100px;
-  height: 85vh;
   background: var(--glass);
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
   backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  display: flex;
-  flex-direction: column;
-  padding: clamp(20px, 4vw, 40px);
   box-shadow: 0 45px 100px rgba(0,0,0,.65);
-  animation: cardAppear .85s var(--ease-smooth);
+  height: 85vh;
 }
 
-/* Chat Log Fixes */
+/* Two-Column Layout */
+.main-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  background: rgba(0, 0, 0, 0.2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+}
+
+#new-chat-btn {
+  background: var(--accent-blue);
+  color: var(--text-dark);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: transform 0.2s;
+}
+#new-chat-btn:hover { transform: scale(1.1); }
+
+#history-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-item {
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-item:hover { background: rgba(0, 210, 255, 0.15); }
+
+.sidebar-footer {
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: var(--accent-blue);
+}
+
+/* Chat Section */
+.chat-section {
+  display: flex;
+  flex-direction: column;
+  padding: 30px;
+}
+
+.chat-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ai-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+  color: var(--accent-blue);
+}
+
 #chat-log {
   flex: 1;
   overflow-y: auto;
@@ -54,19 +129,18 @@ body {
   margin-bottom: 20px;
 }
 
-/* Scrollbar Style */
-#chat-log::-webkit-scrollbar { width: 5px; }
+/* Scrollbar */
+#chat-log::-webkit-scrollbar { width: 6px; }
 #chat-log::-webkit-scrollbar-thumb { background: var(--accent-blue); border-radius: 10px; }
 
-/* Message Bubbles - Centered Width & Black Text */
+/* Bubbles */
 .message {
   padding: 16px 24px;
   border-radius: 22px;
   font-size: 1rem;
   line-height: 1.6;
-  max-width: 75%; /* Fix: Prevents bubbles from being full-width */
-  color: var(--text-dark); /* Andrew's Fix: Text is now black */
-  animation: cardAppear 0.4s var(--ease-smooth);
+  max-width: 75%;
+  color: var(--text-dark); /* Black text */
   word-wrap: break-word;
 }
 
@@ -82,21 +156,60 @@ body {
   border-bottom-left-radius: 4px;
 }
 
-/* Input Group */
+/* Input Area */
+.input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#image-preview-wrapper {
+  position: relative;
+  width: max-content;
+}
+
+#image-preview {
+  max-width: 150px;
+  border-radius: 12px;
+  border: 2px solid var(--accent-blue);
+}
+
+#remove-img-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff4b4b;
+  color: white;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
 .input-group {
   display: flex;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.3);
   padding: 10px;
   border-radius: 20px;
   border: 1px solid var(--border);
+  align-items: center;
 }
+
+.upload-btn {
+  cursor: pointer;
+  color: var(--accent-blue);
+  font-size: 1.4rem;
+  padding: 0 10px;
+  transition: transform 0.2s;
+}
+.upload-btn:hover { transform: scale(1.1); }
 
 #user-input {
   flex: 1;
   background: transparent;
   border: none;
-  padding: 12px;
   color: white;
   outline: none;
   font-size: 1rem;
@@ -106,17 +219,20 @@ body {
   background: var(--accent-blue);
   color: var(--text-dark);
   border: none;
-  padding: 0 25px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
-  font-weight: 800;
+  font-size: 1.2rem;
   cursor: pointer;
-  transition: transform 0.2s var(--ease-smooth);
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-#send-btn:hover { transform: scale(1.05); }
+#send-btn:hover { transform: scale(1.1); }
 
 /* Loading Animation */
-.loading-dots { display: flex; gap: 4px; padding: 5px 0; }
+.loading-dots { display: flex; gap: 5px; padding: 5px 0; }
 .loading-dots span {
   width: 8px; height: 8px;
   background: var(--text-dark);
@@ -126,12 +242,10 @@ body {
 .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
 .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
 
-@keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-  40% { transform: scale(1); opacity: 1; }
-}
+@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 
-@keyframes cardAppear {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Mobile View */
+@media (max-width: 850px) {
+  .main-layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
 }
