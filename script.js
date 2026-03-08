@@ -2,7 +2,7 @@ const chatLog = document.getElementById('chat-log');
 const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 
-async function handleChat() {
+async function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
 
@@ -10,51 +10,43 @@ async function handleChat() {
     addBubble('user', text);
     userInput.value = '';
 
-    // 2. Add Thinking Bubble
-    const aiBubble = addBubble('ai', '<div class="dots"><span></span><span></span><span></span></div>', true);
+    // 2. Add Loading Bubble
+    const aiBubble = addBubble('ai', '<div class="typing-dots"><span></span><span></span><span></span></div>', true);
 
     try {
+        // Fix: Switched to gen.pollinations.ai to remove the notice bug
         const query = encodeURIComponent(text);
-        // Using Pollinations for "no-key" reliability
-        const response = await fetch(`https://text.pollinations.ai/${query}?model=openai`);
+        const url = `https://gen.pollinations.ai/text/${query}?model=openai`;
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error();
+
+        const aiResponse = await response.text();
         
-        if (!response.ok) throw new Error('Offline');
+        // 3. Update the exact bubble we made
+        aiBubble.innerHTML = aiResponse;
 
-        const aiText = await response.text();
-
-        // 3. Update the exact bubble we created
-        aiBubble.innerHTML = aiText;
-
-    } catch (err) {
-        aiBubble.innerText = "Error: Check your internet or try again later.";
-        aiBubble.style.background = "rgba(255, 75, 75, 0.2)";
+    } catch (error) {
+        aiBubble.innerText = "Check your connection and try again!";
+        aiBubble.style.background = "rgba(255, 75, 75, 0.3)";
     }
 
-    // Bug fix: Ensure scroll happens after content is added
     scrollToBottom();
 }
 
 function addBubble(sender, content, isHTML = false) {
     const div = document.createElement('div');
     div.className = `message ${sender}`;
-    
     if (isHTML) div.innerHTML = content;
     else div.innerText = content;
-
     chatLog.appendChild(div);
     scrollToBottom();
     return div;
 }
 
 function scrollToBottom() {
-    chatLog.scrollTo({
-        top: chatLog.scrollHeight,
-        behavior: 'smooth'
-    });
+    chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-// Listeners
-sendBtn.addEventListener('click', handleChat);
-userInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleChat();
-});
+sendBtn.addEventListener('click', sendMessage);
+userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
