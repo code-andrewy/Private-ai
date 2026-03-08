@@ -5,51 +5,85 @@ const chatLog = document.getElementById('chat-log');
 const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 const historyList = document.getElementById('history-list');
+const fileInput = document.getElementById('file-upload');
+const previewWrapper = document.getElementById('image-preview-wrapper');
+const imagePreview = document.getElementById('image-preview');
+const removeImgBtn = document.getElementById('remove-img-btn');
 
-// Initialize
+// Start up
 renderHistory();
+
+// Handle Image Preview
+fileInput.addEventListener('change', function() {
+    if (this.files && this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            previewWrapper.style.display = 'block';
+        }
+        reader.readAsDataURL(this.files[0]);
+    }
+});
+
+removeImgBtn.addEventListener('click', () => {
+    fileInput.value = '';
+    previewWrapper.style.display = 'none';
+});
 
 async function handleChat() {
     const text = userInput.value.trim();
-    const fileInput = document.getElementById('file-upload');
     const file = fileInput.files[0];
 
     if (!text && !file) return;
 
-    // 1. Show User Message (with Image if exists)
-    let userContent = text;
+    // 1. Build User Message
+    let userContent = '';
     if (file) {
-        const imgUrl = URL.createObjectURL(file);
-        userContent = `<img src="${imgUrl}" class="uploaded-img"><br>${text}`;
+        userContent += `<img src="${imagePreview.src}" style="max-width: 200px; border-radius: 12px; margin-bottom: 10px;"><br>`;
     }
+    if (text) userContent += text;
+
     addBubble('user', userContent, true);
+    
+    // Clear inputs
     userInput.value = '';
-    fileInput.value = ''; // Reset file input
+    fileInput.value = '';
+    previewWrapper.style.display = 'none';
 
     // 2. Add Thinking State
     const aiBubble = addBubble('ai', '<div class="loading-dots"><span></span><span></span><span></span></div>', true);
 
     try {
-        // Pollinations supports image generation if you ask for it!
-        // We check if the user wants an image
-        const isImageRequest = text.toLowerCase().includes("draw") || text.toLowerCase().includes("generate image");
-        
-        let url = `https://gen.pollinations.ai/text/${encodeURIComponent(text)}?model=openai`;
-        
+        const lowerText = text.toLowerCase();
+        const isImageRequest = lowerText.includes("draw") || lowerText.includes("generate an image") || lowerText.includes("create an image");
+
         if (isImageRequest) {
-            const seed = Math.floor(Math.random() * 1000000);
-            aiBubble.innerHTML = `<img src="https://image.pollinations.ai/prompt/${encodeURIComponent(text)}?seed=${seed}&width=512&height=512" class="uploaded-img">`;
+            // Generate Image using Pollinations
+            const seed = Math.floor(Math.random() * 10000);
+            const prompt = encodeURIComponent(text.replace('draw', '').replace('generate an image of', '').trim());
+            const imgUrl = `https://image.pollinations.ai/prompt/${prompt}?seed=${seed}&width=512&height=512&nologo=true`;
+            
+            aiBubble.innerHTML = `Here is what I created:<br><br><img src="${imgUrl}" style="max-width: 100%; border-radius: 12px;">`;
         } else {
-            const response = await fetch(url);
+            // Standard Text AI
+            const query = encodeURIComponent(text);
+            const response = await fetch(`https://gen.pollinations.ai/text/${query}?model=openai&cache=false`);
+            
+            if (!response.ok) throw new Error("Network issues");
             const aiText = await response.text();
-            aiBubble.innerHTML = aiText;
+            
+            // Format basic line breaks
+            aiBubble.innerHTML = aiText.replace(/\n/g, '<br>');
         }
 
         saveCurrentChat();
 
     } catch (err) {
-        aiBubble.innerText = "Error connecting to AI.";
+        aiBubble.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Connection failed. Try again.';
+        aiBubble.style.background = "rgba(255, 75, 75, 0.4)";
     }
+
+    scrollToBottom();
 }
 
 function addBubble(sender, content, isHTML = false) {
@@ -57,14 +91,29 @@ function addBubble(sender, content, isHTML = false) {
     div.className = `message ${sender}`;
     isHTML ? div.innerHTML = content : div.innerText = content;
     chatLog.appendChild(div);
-    chatLog.scrollTop = chatLog.scrollHeight;
+    scrollToBottom();
     return div;
 }
 
+function scrollToBottom() {
+    chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: 'smooth' });
+}
+
+// --- History & Saving ---
 function saveCurrentChat() {
+    // Only save if there's an actual conversation
+    if (chatLog.children.length === 0) return;
+
+    // Get the first user message text to use as the title
+    let title = "New Chat";
+    const firstUserMsg = chatLog.querySelector('.user');
+    if (firstUserMsg) {
+        title = firstUserMsg.innerText.substring(0, 25) + "...";
+    }
+
     const chatData = {
         id: currentChatId,
-        title: chatLog.firstChild?.innerText.substring(0, 20) || "New Chat",
+        title: title,
         html: chatLog.innerHTML
     };
     
@@ -78,10 +127,14 @@ function saveCurrentChat() {
 
 function renderHistory() {
     historyList.innerHTML = '';
-    chats.forEach(chat => {
+    
+    // Sort so newest is on top
+    const sortedChats = [...chats].reverse();
+    
+    sortedChats.forEach(chat => {
         const item = document.createElement('div');
         item.className = 'history-item';
-        item.innerText = chat.title;
+        item.innerHTML = `<i class="fa-regular fa-message"></i> ${chat.title}`;
         item.onclick = () => loadChat(chat.id);
         historyList.appendChild(item);
     });
@@ -92,6 +145,7 @@ function loadChat(id) {
     if (chat) {
         currentChatId = chat.id;
         chatLog.innerHTML = chat.html;
+        scrollToBottom();
     }
 }
 
@@ -100,5 +154,8 @@ document.getElementById('new-chat-btn').onclick = () => {
     chatLog.innerHTML = '';
 };
 
-sendBtn.onclick = handleChat;
-userInput.onkeypress = (e) => { if (e.key === 'Enter') handleChat(); };
+// Event Listeners
+sendBtn.addEventListener('click', handleChat);
+userInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleChat();
+});
