@@ -2,49 +2,45 @@ const chatLog = document.getElementById('chat-log');
 const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 
-// Using a more stable proxy that doesn't require a "click to activate" page
-const PROXY = 'https://api.allorigins.win/raw?url=';
-const API_URL = 'https://clave-app.onrender.com/api/chat';
-
 async function sendMessage() {
-    const message = userInput.value.trim();
-    if (!message) return;
+    const text = userInput.value.trim();
+    if (!text) return;
 
-    appendMessage('user', message);
+    // Show user message
+    appendMessage('user', text);
     userInput.value = '';
 
-    // Create placeholder for AI response
-    const aiMessageDiv = document.createElement('div');
-    aiMessageDiv.classList.add('message', 'ai');
-    aiMessageDiv.innerText = '...';
-    chatLog.appendChild(aiMessageDiv);
+    // Create a "Thinking..." bubble
+    const aiBubble = appendMessage('ai', '...');
 
     try {
-        const response = await fetch(PROXY + encodeURIComponent(API_URL), {
+        // Use a more direct proxy to bypass CORS
+        const url = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://clave-app.onrender.com/api/chat');
+
+        const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            // Note: When using this proxy, we send data as a string
             body: JSON.stringify({
-                message: message,
-                model: "gpt-4o"
+                message: text,
+                model: "gpt-4o",
+                systemPrompt: "You are a private AI assistant."
             })
         });
 
-        if (!response.ok) throw new Error('API is down or busy');
+        // The proxy wraps the response in a 'contents' string
+        const result = await response.json();
+        const data = JSON.parse(result.contents);
 
-        const data = await response.json();
-        
-        // Final fallback: check for any possible text field the API might return
-        const finalContent = data.text || data.response || data.output || "No response received.";
-        aiMessageDiv.innerText = finalContent;
+        if (data.text) {
+            aiBubble.innerText = data.text;
+        } else {
+            aiBubble.innerText = "The AI is awake, but didn't send text back.";
+        }
 
     } catch (error) {
-        console.error("Error:", error);
-        aiMessageDiv.innerText = "Error: API might be sleeping. Try again in 30 seconds.";
+        console.error("Debug Info:", error);
+        aiBubble.innerText = "Connection failed. The API might be sleeping—try again in a moment.";
     }
-    
-    chatLog.scrollTop = chatLog.scrollHeight;
 }
 
 function appendMessage(sender, text) {
@@ -53,7 +49,10 @@ function appendMessage(sender, text) {
     msgDiv.innerText = text;
     chatLog.appendChild(msgDiv);
     chatLog.scrollTop = chatLog.scrollHeight;
+    return msgDiv; // Return the div so we can update it later
 }
 
 sendBtn.addEventListener('click', sendMessage);
-userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+userInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+});
