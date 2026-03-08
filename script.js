@@ -1,9 +1,7 @@
-// --- 1. Setup and Variables ---
-// We grab your saved chats, or start an empty list if there are none
+// --- 1. Setup & Variables ---
 let chats = JSON.parse(localStorage.getItem('ai_chats')) || [];
 let currentChatId = Date.now();
 
-// Getting all our HTML elements
 const chatLog = document.getElementById('chat-log');
 const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
@@ -13,164 +11,111 @@ const previewWrapper = document.getElementById('image-preview-wrapper');
 const imagePreview = document.getElementById('image-preview');
 const removeImgBtn = document.getElementById('remove-img-btn');
 
-// Load history when the page first opens
 renderHistory();
 
-// --- 2. Image Preview Logic ---
-// This shows the image on the screen right after you pick a file
+// --- 2. Image Handling Logic ---
 fileInput.addEventListener('change', function() {
     if (this.files && this.files[0]) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = (e) => {
             imagePreview.src = e.target.result;
             previewWrapper.style.display = 'block';
-        }
+        };
         reader.readAsDataURL(this.files[0]);
     }
 });
 
-// The "X" button to remove the picture you just picked
-removeImgBtn.addEventListener('click', () => {
-    fileInput.value = ''; 
-    previewWrapper.style.display = 'none'; 
-});
+removeImgBtn.onclick = () => {
+    fileInput.value = '';
+    previewWrapper.style.display = 'none';
+};
 
-// --- 3. Main Chat Logic ---
+// --- 3. Main AI Logic ---
 async function handleChat() {
     const text = userInput.value.trim();
-    const file = fileInput.files[0];
+    const hasImage = previewWrapper.style.display === 'block';
+    const imageData = hasImage ? imagePreview.src : null;
 
-    // Stop and do nothing if the user didn't type or attach anything
-    if (!text && !file) return;
+    if (!text && !hasImage) return;
 
-    // Build the user's message
-    let userContent = '';
-    if (file) {
-        // Attach the image if one was uploaded
-        userContent += `<img src="${imagePreview.src}" style="max-width: 200px; border-radius: 12px; margin-bottom: 10px;"><br>`;
-    }
-    if (text) {
-        userContent += text;
-    }
+    // Build User Bubble
+    let userHTML = hasImage ? `<img src="${imageData}" class="uploaded-img"><br>` : '';
+    userHTML += text;
+    addBubble('user', userHTML, true);
 
-    // Put user message on screen
-    addBubble('user', userContent, true);
-    
-    // Clear the typing box and image preview so it's ready for the next message
+    // Reset Inputs
     userInput.value = '';
     fileInput.value = '';
     previewWrapper.style.display = 'none';
 
-    // Show the "Thinking" bouncing dots
+    // Thinking State
     const aiBubble = addBubble('ai', '<div class="loading-dots"><span></span><span></span><span></span></div>', true);
 
     try {
-        const lowerText = text.toLowerCase();
-        
-        // Check if the user is asking the AI to draw an image
-        const isImageRequest = lowerText.includes("draw") || lowerText.includes("generate an image");
+        const isImageRequest = text.toLowerCase().includes("draw") || text.toLowerCase().includes("generate");
 
         if (isImageRequest) {
-            // Image Generation Mode
+            // Image Generation
+            const prompt = encodeURIComponent(text.replace(/draw|generate/g, '').trim());
             const seed = Math.floor(Math.random() * 10000);
-            // Remove the word "draw" so the AI just gets the subject (like "a dog")
-            const prompt = encodeURIComponent(text.toLowerCase().replace('draw', '').trim());
             const imgUrl = `https://image.pollinations.ai/prompt/${prompt}?seed=${seed}&width=512&height=512&nologo=true`;
-            
-            aiBubble.innerHTML = `Here is what I created:<br><br><img src="${imgUrl}" style="max-width: 100%; border-radius: 12px;">`;
+            aiBubble.innerHTML = `Done!<br><img src="${imgUrl}" class="uploaded-img" style="margin-top:10px">`;
         } else {
-            // Standard Text Chat Mode
-            const query = encodeURIComponent(text);
-            const response = await fetch(`https://gen.pollinations.ai/text/${query}?model=openai&cache=false`);
+            // Text Generation (Updated to 'gen' endpoint to fix bugs)
+            const response = await fetch(`https://gen.pollinations.ai/text/${encodeURIComponent(text)}?model=openai&cache=false`);
+            if (!response.ok) throw new Error();
             
-            if (!response.ok) throw new Error("Network issues");
             const aiText = await response.text();
-            
-            // Swap out line breaks for HTML breaks so paragraphs look nice
             aiBubble.innerHTML = aiText.replace(/\n/g, '<br>');
         }
-
-        // Save the chat after the AI answers successfully
         saveCurrentChat();
-
     } catch (err) {
-        // If the internet drops or the API fails
-        aiBubble.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Connection failed. Try again.';
-        aiBubble.style.background = "rgba(255, 75, 75, 0.4)";
+        aiBubble.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Connection failed. Pollinations might be busy!';
+        aiBubble.style.background = "rgba(255, 75, 75, 0.3)";
     }
-
     scrollToBottom();
 }
 
-// --- 4. Helper Functions ---
-// Makes the actual chat bubble on the screen
+// --- 4. UI Helpers ---
 function addBubble(sender, content, isHTML = false) {
     const div = document.createElement('div');
     div.className = `message ${sender}`;
-    if (isHTML) {
-        div.innerHTML = content;
-    } else {
-        div.innerText = content;
-    }
+    isHTML ? div.innerHTML = content : div.innerText = content;
     chatLog.appendChild(div);
     scrollToBottom();
     return div;
 }
 
-// Forces the chat box to scroll down to the newest message
 function scrollToBottom() {
     chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: 'smooth' });
 }
 
-// --- 5. Saving and History ---
+// --- 5. Storage & History ---
 function saveCurrentChat() {
-    // Don't save empty chats
     if (chatLog.children.length === 0) return;
 
-    // Grab the first user message to use as the title in the sidebar
-    let title = "New Chat";
-    const firstUserMsg = chatLog.querySelector('.user');
-    if (firstUserMsg) {
-        // Slice the text so it's short, and trim any blank spaces
-        title = firstUserMsg.innerText.substring(0, 25).trim() + "...";
-    }
-
+    const firstMsg = chatLog.querySelector('.user')?.innerText || "New Chat";
     const chatData = {
         id: currentChatId,
-        title: title,
+        title: firstMsg.substring(0, 25) + "...",
         html: chatLog.innerHTML
     };
-    
-    // Find if we are updating an old chat or making a new one
+
     const index = chats.findIndex(c => c.id === currentChatId);
-    if (index > -1) {
-        chats[index] = chatData;
-    } else {
-        chats.push(chatData);
-    }
-    
-    // BUG FIX: Keep only the 15 most recent chats. Image data is heavy, 
-    // and if we save too many, local storage will crash.
-    if (chats.length > 15) {
-        chats.shift(); // Removes the oldest chat at the start of the list
-    }
-    
+    index > -1 ? chats[index] = chatData : chats.push(chatData);
+
+    // Limit to 15 chats to prevent localStorage crashes
+    if (chats.length > 15) chats.shift();
+
     localStorage.setItem('ai_chats', JSON.stringify(chats));
     renderHistory();
 }
 
 function renderHistory() {
     historyList.innerHTML = '';
-    
-    // Sort backwards so the newest chat is at the top of the sidebar
-    const sortedChats = [...chats].reverse();
-    
-    sortedChats.forEach(chat => {
+    [...chats].reverse().forEach(chat => {
         const item = document.createElement('div');
-        
-        // BUG FIX: Add a special class if it's the chat we are currently looking at
-        item.className = chat.id === currentChatId ? 'history-item active-chat' : 'history-item';
-        
+        item.className = `history-item ${chat.id === currentChatId ? 'active-chat' : ''}`;
         item.innerHTML = `<i class="fa-regular fa-message"></i> ${chat.title}`;
         item.onclick = () => loadChat(chat.id);
         historyList.appendChild(item);
@@ -182,25 +127,16 @@ function loadChat(id) {
     if (chat) {
         currentChatId = chat.id;
         chatLog.innerHTML = chat.html;
-        renderHistory(); // Re-render to highlight the active chat in the sidebar
+        renderHistory();
         scrollToBottom();
     }
 }
 
-// The "+" Button
 document.getElementById('new-chat-btn').onclick = () => {
     currentChatId = Date.now();
     chatLog.innerHTML = '';
-    
-    // BUG FIX: Clear inputs when starting a new chat so old text/images don't carry over
-    userInput.value = '';
-    fileInput.value = '';
-    previewWrapper.style.display = 'none';
-    renderHistory(); 
+    renderHistory();
 };
 
-// --- 6. Event Listeners ---
-sendBtn.addEventListener('click', handleChat);
-userInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleChat();
-});
+sendBtn.onclick = handleChat;
+userInput.onkeypress = (e) => { if (e.key === 'Enter') handleChat(); };
