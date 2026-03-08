@@ -3,17 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private AI</title>
+    <title>Private AI | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="chat-container">
-        <div id="chat-log" class="chat-log"></div>
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off">
-            <button id="send-btn">Send</button>
+
+    <div id="bg-overlay"></div>
+    
+    <div class="container">
+        <div class="card main-layout">
+            
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h3><i class="fa-solid fa-clock-rotate-left"></i> History</h3>
+                    <button id="new-chat-btn" title="Start New Chat">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                <div id="history-list">
+                    </div>
+                <div class="sidebar-footer">
+                    <p><i class="fa-solid fa-circle-check" style="color: #00d2ff;"></i> Online</p>
+                </div>
+            </aside>
+
+            <main class="chat-section">
+                <header class="chat-header">
+                    <div class="ai-info">
+                        <i class="fa-solid fa-robot"></i>
+                        <h2>AI Assistant</h2>
+                    </div>
+                </header>
+
+                <div id="chat-log">
+                    </div>
+                
+                <div class="input-container">
+                    <div id="image-preview-wrapper" style="display: none;">
+                        <img id="image-preview" src="" alt="Preview">
+                        <button id="remove-img-btn"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="file-upload" class="upload-btn" title="Upload Image">
+                            <input type="file" id="file-upload" accept="image/*" hidden>
+                            <i class="fa-solid fa-image"></i>
+                        </label>
+                        
+                        <input type="text" id="user-input" placeholder="Message or type 'Draw a dog'..." autocomplete="off">
+                        
+                        <button id="send-btn" title="Send">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </main>
+
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
