@@ -2,53 +2,70 @@ const chatLog = document.getElementById('chat-log');
 const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 
-async function sendMessage() {
-    const message = userInput.value.trim();
-    if (!message) return;
+async function handleChat() {
+    const text = userInput.value.trim();
+    if (!text) return;
 
-    // 1. Show user message
-    appendMessage('user', message);
+    // 1. Add User Message
+    createBubble('user', text);
     userInput.value = '';
 
-    // 2. Create AI thinking bubble
-    const aiBubble = appendMessage('ai', '...');
+    // 2. Add "Thinking" Bubble
+    const thinkingBubble = createBubble('ai', `
+        <div class="typing">
+            <span></span><span></span><span></span>
+        </div>
+    `, true);
 
     try {
-        // Pollinations 'text' endpoint is a simple GET request
-        // Parameters: model=openai (default), system=instructions
-        const systemPrompt = encodeURIComponent("You are a helpful, premium AI assistant.");
-        const userPrompt = encodeURIComponent(message);
-        
-        const url = `https://text.pollinations.ai/${userPrompt}?system=${systemPrompt}&model=openai`;
+        // Pollinations.ai is public and requires no key
+        const query = encodeURIComponent(text);
+        const response = await fetch(`https://text.pollinations.ai/${query}?model=openai`);
 
-        const response = await fetch(url);
+        if (!response.ok) throw new Error('API Timeout');
 
-        if (!response.ok) throw new Error('Network response was not ok');
+        const aiResponse = await response.text();
 
-        // This API returns the response as plain text, not JSON!
-        const aiText = await response.text();
-        
-        // 3. Update the thinking bubble with the real answer
-        aiBubble.innerText = aiText;
+        // 3. Swap dots for real text
+        thinkingBubble.innerHTML = aiResponse;
 
-    } catch (error) {
-        console.error("AI Error:", error);
-        aiBubble.innerText = "Error: Could not connect to the AI. Check your internet connection.";
+    } catch (err) {
+        thinkingBubble.innerHTML = "<span style='color:#ff4b4b'>Connection lost. Please try again.</span>";
     }
-}
-
-function appendMessage(sender, text) {
-    const msgDiv = document.createElement('div');
-    msgDiv.classList.add('message', sender);
-    msgDiv.innerText = text;
-    chatLog.appendChild(msgDiv);
     
-    // Auto-scroll to the bottom
-    chatLog.scrollTop = chatLog.scrollHeight;
-    return msgDiv;
+    // Auto-scroll
+    chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: 'smooth' });
 }
 
-sendBtn.addEventListener('click', sendMessage);
+function createBubble(sender, content, isHTML = false) {
+    const div = document.createElement('div');
+    div.classList.add('message', sender);
+    
+    if (isHTML) {
+        div.innerHTML = content;
+    } else {
+        div.innerText = content;
+    }
+    
+    chatLog.appendChild(div);
+    chatLog.scrollTop = chatLog.scrollHeight;
+    return div;
+}
+
+// Listeners
+sendBtn.addEventListener('click', handleChat);
 userInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
+    if (e.key === 'Enter') handleChat();
+});
+
+// Subtle Mouse Glow effect (matches your card style)
+document.addEventListener('mousemove', e => {
+    const card = document.querySelector('.card');
+    if(card) {
+        const rect = card.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        card.style.setProperty('--mouse-x', `${x}%`);
+        card.style.setProperty('--mouse-y', `${y}%`);
+    }
 });
